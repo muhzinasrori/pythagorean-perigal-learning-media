@@ -5,6 +5,7 @@ import { AnimatePresence, motion } from 'framer-motion';
 import { Dices, RotateCcw, Timer, Trophy } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
+import { Switch } from '@/components/ui/switch';
 import { AssemblyBoard } from '@/features/shared/AssemblyBoard';
 import {
   WorldModel,
@@ -59,6 +60,11 @@ export function TimedChallenge({ onGoToQuiz }: TimedChallengeProps) {
   const [finishedAt, setFinishedAt] = useState<number | null>(null);
   const [placed, setPlaced] = useState(0);
   const [solvedEver, setSolvedEver] = useState(false);
+  const [lastUsedAuto, setLastUsedAuto] = useState(false);
+  const [challengeMode, setChallengeMode] = useLocalStorage<boolean>(
+    'pythagoras-challenge-mode',
+    false,
+  );
   const [bestMs, setBestMs] = useLocalStorage<number | null>('pythagoras-lab-best-ms', null);
 
   const world: WorldModel = useMemo(() => createWorld(legs[0], legs[1]), [legs]);
@@ -84,6 +90,7 @@ export function TimedChallenge({ onGoToQuiz }: TimedChallengeProps) {
     setFinishedAt(null);
     setPlaced(0);
     setAutoSignal(0);
+    setLastUsedAuto(false);
     setRunId((r) => r + 1);
   }, [legs]);
 
@@ -91,14 +98,21 @@ export function TimedChallenge({ onGoToQuiz }: TimedChallengeProps) {
     setStartedAt((prev) => prev ?? performance.now());
   }, []);
 
-  const handleComplete = useCallback(() => {
-    if (startedAt === null) return;
-    const end = performance.now();
-    const dur = end - startedAt;
-    setFinishedAt(end);
-    setBestMs((best) => (best === null || dur < best ? dur : best));
-    setSolvedEver(true);
-  }, [startedAt, setBestMs]);
+  const handleComplete = useCallback(
+    (meta?: { usedAuto: boolean }) => {
+      if (startedAt === null) return;
+      const end = performance.now();
+      const dur = end - startedAt;
+      setFinishedAt(end);
+      const usedAuto = meta?.usedAuto ?? false;
+      setLastUsedAuto(usedAuto);
+      if (!usedAuto) {
+        setBestMs((best) => (best === null || dur < best ? dur : best));
+      }
+      setSolvedEver(true);
+    },
+    [startedAt, setBestMs],
+  );
 
   return (
     <div className="grid gap-5 lg:grid-cols-[minmax(0,1fr)_330px]">
@@ -113,6 +127,8 @@ export function TimedChallenge({ onGoToQuiz }: TimedChallengeProps) {
             onPlacedChange={setPlaced}
             onFirstGrab={handleFirstGrab}
             autoSignal={autoSignal}
+            challengeMode={challengeMode}
+            seed={runId * 7919 + 42}
           />
         </CardContent>
       </Card>
@@ -143,6 +159,24 @@ export function TimedChallenge({ onGoToQuiz }: TimedChallengeProps) {
                   {bestMs !== null ? formatTime(bestMs) : '—'}
                 </p>
               </div>
+            </div>
+
+            <div className="flex items-center justify-between rounded-xl bg-teal-50/70 p-3">
+              <div className="space-y-0.5">
+                <p className="text-xs font-bold text-teal-900">Orientation challenge</p>
+                <p className="text-[11px] text-teal-700/80">Rotate &amp; flip pieces to fit</p>
+              </div>
+              <Switch
+                checked={challengeMode}
+                onCheckedChange={(checked) => {
+                  setChallengeMode(checked);
+                  setRunId((r) => r + 1);
+                  setStartedAt(null);
+                  setFinishedAt(null);
+                  setPlaced(0);
+                }}
+                aria-label="Toggle piece orientation challenge"
+              />
             </div>
 
             <div className="rounded-xl bg-stone-100 px-3.5 py-2.5">
@@ -192,8 +226,13 @@ export function TimedChallenge({ onGoToQuiz }: TimedChallengeProps) {
                 <Timer className="h-5 w-5" aria-hidden="true" /> Assembled in{' '}
                 {formatTime((finishedAt - (startedAt ?? finishedAt)))}!
               </p>
+              {lastUsedAuto && (
+                <p className="mt-1 text-xs font-semibold text-amber-700">
+                  (Auto-assemble assisted — timer not counted for personal best)
+                </p>
+              )}
               <p className="mt-1 text-sm text-emerald-900/80">
-                {solvedEver && bestMs !== null && finishedAt - (startedAt ?? finishedAt) <= bestMs
+                {!lastUsedAuto && solvedEver && bestMs !== null && finishedAt - (startedAt ?? finishedAt) <= bestMs
                   ? 'New personal best — brilliant!'
                   : 'The pieces proved it again: the four parts plus a² fill c² exactly.'}
               </p>

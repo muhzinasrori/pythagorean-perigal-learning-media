@@ -16,11 +16,14 @@ import {
 } from '@/lib/geometry/placement';
 import { makeProjector } from '@/features/shared/projector';
 import { PALETTE, PIECE_SHADES } from '@/lib/palette';
+import { PieceControls } from './PieceControls';
 
-interface PieceState {
+export interface PieceState {
   dx: number; // svg-unit translate X
   dy: number; // svg-unit translate Y
   rot: number; // svg-unit rotation (screen space)
+  flip: boolean; // whether the piece is currently flipped horizontally
+  scaleX?: number; // animated horizontal scale for flip (-1..1)
   placed: boolean;
 }
 
@@ -29,12 +32,16 @@ interface AssemblyBoardProps {
   /** 4 b-pieces (cut already applied) + the a² piece, at resting positions */
   pieces: CutPiece[];
   cutCorrect: boolean;
-  onComplete: () => void;
+  onComplete: (meta?: { usedAuto: boolean }) => void;
   onPlacedChange?: (placed: number, total: number) => void;
   /** fired the first time any piece is grabbed (used to start the challenge timer) */
   onFirstGrab?: () => void;
   /** increment to trigger the auto-assemble animation */
   autoSignal: number;
+  /** when true, pieces start in scrambled orientations */
+  challengeMode?: boolean;
+  /** seed for reproducible orientation scrambling in challenge mode */
+  seed?: number;
 }
 
 /**
@@ -45,7 +52,12 @@ interface AssemblyBoardProps {
 const W = 1000;
 const H = 760;
 
-const ZERO: PieceState = { dx: 0, dy: 0, rot: 0, placed: false };
+const ZERO: PieceState = { dx: 0, dy: 0, rot: 0, flip: false, scaleX: 1, placed: false };
+
+function seededRandom(s: number): number {
+  const x = Math.sin(s) * 10000;
+  return x - Math.floor(x);
+}
 
 interface TweenAnim {
   from: PieceState;
@@ -78,10 +90,14 @@ function createTweenRunner(
           anims.delete(id);
         }
         const e = 1 - Math.pow(1 - t, 3); // easeOutCubic
+        const fromScaleX = anim.from.scaleX ?? (anim.from.flip ? -1 : 1);
+        const toScaleX = anim.to.scaleX ?? (anim.to.flip ? -1 : 1);
         next[id] = {
           dx: anim.from.dx + (anim.to.dx - anim.from.dx) * e,
           dy: anim.from.dy + (anim.to.dy - anim.from.dy) * e,
           rot: anim.from.rot + (anim.to.rot - anim.from.rot) * e,
+          scaleX: fromScaleX + (toScaleX - fromScaleX) * e,
+          flip: anim.to.flip,
           placed: anim.to.placed,
         };
       });
@@ -140,14 +156,35 @@ export function AssemblyBoard({
   onPlacedChange,
   onFirstGrab,
   autoSignal,
+  challengeMode,
+  seed,
 }: AssemblyBoardProps) {
   const svgRef = useRef<SVGSVGElement | null>(null);
   const proj = useMemo(() => makeProjector(world.bounds, W, H, 0.05), [world]);
   const plan = useMemo(() => computeAssembly(world), [world]);
 
-  const [placements, setPlacements] = useState<Record<PieceId, PieceState>>(
-    () => Object.fromEntries(pieces.map((p) => [p.id, ZERO])) as Record<PieceId, PieceState>,
-  );
+  const [placements, setPlacements] = useState<Record<PieceId, PieceState>>(() => {
+    return Object.fromEntries(
+      pieces.map((p, i) => {
+        if (challengeMode && p.id !== 'a') {
+          const randRot = [0, 90, 180, 270][Math.floor(seededRandom((seed ?? 42) + i * 17) * 4)];
+          const randFlip = seededRandom((seed ?? 42) + i * 31) > 0.5;
+          return [
+            p.id,
+            {
+              dx: 0,
+              dy: 0,
+              rot: randRot,
+              flip: randFlip,
+              scaleX: randFlip ? -1 : 1,
+              placed: false,
+            },
+          ];
+        }
+        return [p.id, ZERO];
+      }),
+    ) as Record<PieceId, PieceState>;
+  });
   const placementsRef = useRef(placements);
   useEffect(() => {
     placementsRef.current = placements;
@@ -161,6 +198,8 @@ export function AssemblyBoard({
     a: null,
   });
   const [hint, setHint] = useState<string | null>(null);
+  const [selectedId, setSelectedId] = useState<PieceId | null>(null);
+  const usedAutoRef = useRef(false);
 
   const [activeId, setActiveId] = useState<PieceId | null>(null);
   const dragRef = useRef<{
@@ -200,6 +239,58 @@ export function AssemblyBoard({
     [runner],
   );
 
+  const rotatePiece = useCallback(
+    (id: PieceId, deltaDeg: number) => {
+      const cur = placementsRef.current[id];
+      if (!cur || cur.placed) return;
+      runner.start(
+        id,
+        cur,
+        { ...cur, rot: cur.rot + deltaDeg },
+        180,
+      );
+    },
+    [runner],
+  );
+
+  const flipPiece = useCallback(
+    (id: PieceId) => {
+      const cur = placementsRef.current[id];
+      if (!cur || cur.placed) return;
+      const nextFlip = !cur.flip;
+      const fromScaleX = cur.scaleX ?? (cur.flip ? -1 : 1);
+      const toScaleX = nextFlip ? -1 : 1;
+      runner.start(
+        id,
+        { ...cur, scaleX: fromScaleX },
+        { ...cur, flip: nextFlip, scaleX: toScaleX },
+        220,
+      );
+    },
+    [runner],
+  );
+
+  // Keyboard shortcuts (R, Shift+R, F, Escape)
+  useEffect(() => {
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (!selectedId) return;
+      const cur = placementsRef.current[selectedId];
+      if (!cur || cur.placed) return;
+
+      if (e.key === 'r' || e.key === 'R') {
+        e.preventDefault();
+        rotatePiece(selectedId, e.shiftKey ? -90 : 90);
+      } else if (e.key === 'f' || e.key === 'F') {
+        e.preventDefault();
+        flipPiece(selectedId);
+      } else if (e.key === 'Escape') {
+        setSelectedId(null);
+      }
+    };
+    window.addEventListener('keydown', onKeyDown);
+    return () => window.removeEventListener('keydown', onKeyDown);
+  }, [selectedId, rotatePiece, flipPiece]);
+
   const snapPiece = useCallback(
     (id: PieceId, ignoreDistance: boolean) => {
       const piece = pieces.find((p) => p.id === id);
@@ -218,6 +309,7 @@ export function AssemblyBoard({
         dx: cur.dx,
         dy: cur.dy,
         rot: cur.rot,
+        flip: cur.flip,
         scale: proj.scale,
         snapRadius: Math.max(0.7, world.a * 0.32),
         ignoreDistance,
@@ -246,6 +338,7 @@ export function AssemblyBoard({
       }
 
       setHint(null);
+      if (id === selectedId) setSelectedId(null);
       const targetSlotId = best.target.id;
       setOccupiedSlots((prev) => ({ ...prev, [targetSlotId]: id }));
 
@@ -253,6 +346,8 @@ export function AssemblyBoard({
         dx: cur.dx + best.verdict.corrective.dx,
         dy: cur.dy + best.verdict.corrective.dy,
         rot: cur.rot + best.verdict.corrective.rotDelta,
+        flip: cur.flip,
+        scaleX: cur.flip ? -1 : 1,
         placed: true,
       };
 
@@ -265,12 +360,13 @@ export function AssemblyBoard({
         return next;
       });
     },
-    [pieces, plan.targets, proj, tweenTo, world.a, onPlacedChange, cutCorrect, occupiedSlots],
+    [pieces, plan.targets, proj, tweenTo, world.a, onPlacedChange, cutCorrect, occupiedSlots, selectedId],
   );
 
   // Auto-assemble
   useEffect(() => {
     if (autoSignal === 0) return;
+    usedAutoRef.current = true;
     timeoutsRef.current.forEach(clearTimeout);
     timeoutsRef.current = [];
     runner.stop();
@@ -285,7 +381,7 @@ export function AssemblyBoard({
   useEffect(() => {
     if (placedCount === pieces.length && pieces.length > 0 && !completedRef.current) {
       completedRef.current = true;
-      onComplete();
+      onComplete({ usedAuto: usedAutoRef.current });
     }
   }, [placedCount, pieces.length, onComplete]);
 
@@ -321,6 +417,7 @@ export function AssemblyBoard({
       unitsPerPx: 1 / ctm.a,
     };
     setActiveId(id);
+    setSelectedId(id);
     runner.cancel(id);
     if (!grabbedOnceRef.current) {
       grabbedOnceRef.current = true;
@@ -359,11 +456,30 @@ export function AssemblyBoard({
   const holePlaced = placements['a']?.placed ?? false;
 
   return (
-    <div className="relative w-full">
+    <div
+      className="relative w-full"
+      onClick={() => setSelectedId(null)}
+    >
       {/* Screen-reader drop feedback */}
       <div aria-live="polite" className="sr-only">
         {hint}
       </div>
+
+      {/* Floating piece controls for selected piece */}
+      {selectedId && !placements[selectedId]?.placed && (
+        <div
+          className="absolute top-3 left-1/2 -translate-x-1/2 z-20"
+          onClick={(e) => e.stopPropagation()}
+        >
+          <PieceControls
+            pieceId={selectedId}
+            onRotateCW={() => rotatePiece(selectedId, 90)}
+            onRotateCCW={() => rotatePiece(selectedId, -90)}
+            onFlip={() => flipPiece(selectedId)}
+            onDeselect={() => setSelectedId(null)}
+          />
+        </div>
+      )}
 
       <svg
         ref={svgRef}
@@ -461,14 +577,25 @@ export function AssemblyBoard({
           const st = placements[piece.id] ?? ZERO;
           const label = piece.id === 'a' ? 'a' : piece.id.slice(1);
           const labelFill = piece.id === 'a' ? PALETTE.a.text : '#134e4a';
+          const isSelected = selectedId === piece.id && !st.placed;
+          const sX = st.scaleX ?? (st.flip ? -1 : 1);
+
           return (
             <g
               key={piece.id}
-              transform={`translate(${st.dx} ${st.dy}) rotate(${st.rot} ${centroidSvg.x} ${centroidSvg.y})`}
+              transform={`translate(${st.dx} ${st.dy}) translate(${centroidSvg.x} ${centroidSvg.y}) rotate(${st.rot}) scale(${sX} 1) translate(${-centroidSvg.x} ${-centroidSvg.y})`}
               onPointerDown={onPointerDown(piece.id)}
               onPointerMove={onPointerMove}
               onPointerUp={onPointerUp(piece.id)}
               onPointerCancel={onPointerUp(piece.id)}
+              onDoubleClick={(e) => {
+                e.stopPropagation();
+                if (!st.placed) rotatePiece(piece.id, 90);
+              }}
+              onClick={(e) => {
+                e.stopPropagation();
+                if (!st.placed) setSelectedId(piece.id);
+              }}
               style={{
                 cursor: st.placed ? 'default' : activeId === piece.id ? 'grabbing' : 'grab',
               }}
@@ -477,16 +604,19 @@ export function AssemblyBoard({
               <path
                 d={toPathString(pts)}
                 fill={shadeFor(piece.id, index)}
-                stroke={st.placed ? '#0f766e' : '#115e59'}
-                strokeWidth="2.5"
+                stroke={isSelected ? '#0284c7' : st.placed ? '#0f766e' : '#115e59'}
+                strokeWidth={isSelected ? '3.5' : '2.5'}
                 strokeLinejoin="round"
                 opacity={st.placed ? 0.96 : 1}
+                filter={isSelected ? 'drop-shadow(0 0 6px rgba(2, 132, 199, 0.45))' : undefined}
               />
               <circle
                 cx={centroidSvg.x}
                 cy={centroidSvg.y}
                 r={Math.max(10, Math.min(16, world.a * proj.scale * 0.14))}
-                fill="#ffffff"
+                fill={isSelected ? '#e0f2fe' : '#ffffff'}
+                stroke={isSelected ? '#0284c7' : 'none'}
+                strokeWidth={isSelected ? '1.5' : '0'}
                 opacity="0.92"
                 pointerEvents="none"
               />
@@ -498,8 +628,13 @@ export function AssemblyBoard({
                 fontSize={Math.max(11, Math.min(15, world.a * proj.scale * 0.15))}
                 fontWeight={800}
                 className="font-mono"
-                fill={labelFill}
+                fill={isSelected ? '#0369a1' : labelFill}
                 pointerEvents="none"
+                transform={
+                  sX < 0
+                    ? `translate(${centroidSvg.x} ${centroidSvg.y}) scale(-1 1) translate(${-centroidSvg.x} ${-centroidSvg.y})`
+                    : undefined
+                }
               >
                 {label}
               </text>
