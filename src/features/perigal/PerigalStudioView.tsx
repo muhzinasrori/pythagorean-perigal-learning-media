@@ -254,7 +254,7 @@ export function PerigalStudioView({ onNavigateModule }: PerigalStudioViewProps) 
                         className="min-h-11 flex-1 rounded-xl border-teal-600 text-teal-800"
                       >
                         {diag1 ? <CheckCircle2 className="h-4 w-4 text-emerald-600" /> : null}
-                        Diagonal ①
+                        Diagonal 1
                       </Button>
                       <Button
                         onClick={() => setDiag2(true)}
@@ -263,7 +263,7 @@ export function PerigalStudioView({ onNavigateModule }: PerigalStudioViewProps) 
                         className="min-h-11 flex-1 rounded-xl border-teal-600 text-teal-800"
                       >
                         {diag2 ? <CheckCircle2 className="h-4 w-4 text-emerald-600" /> : null}
-                        Diagonal ②
+                        Diagonal 2
                       </Button>
                     </div>
                     {diag1 && diag2 && (
