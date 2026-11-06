@@ -6,6 +6,7 @@ import {
   ArrowRight,
   CheckCircle2,
   Dices,
+  Lock,
   RotateCcw,
   Scissors,
   Sparkles,
@@ -186,52 +187,70 @@ export function PerigalStudioView({ onNavigateModule }: PerigalStudioViewProps) 
           {/* Triangle info + presets */}
           <Card className="rounded-2xl border-stone-200">
             <CardContent className="space-y-3 p-5">
-              <div className="flex items-center justify-between gap-2 font-mono text-sm font-bold">
-                <span className="rounded-lg bg-amber-100 px-2.5 py-1 text-amber-900">
-                  a = {fmt(world.a)}
-                </span>
-                <span className="rounded-lg bg-teal-100 px-2.5 py-1 text-teal-900">
-                  b = {fmt(world.b)}
-                </span>
-                <span className="rounded-lg bg-rose-100 px-2.5 py-1 text-rose-700">
-                  c = {fmt(world.c)}
-                </span>
+              <div className="flex items-center justify-between gap-2">
+                <div className="flex flex-wrap items-center gap-2 font-mono text-sm font-bold">
+                  <span className="rounded-lg bg-amber-100 px-2.5 py-1 text-amber-900">
+                    a = {fmt(world.a)}
+                  </span>
+                  <span className="rounded-lg bg-teal-100 px-2.5 py-1 text-teal-900">
+                    b = {fmt(world.b)}
+                  </span>
+                  <span className="rounded-lg bg-rose-100 px-2.5 py-1 text-rose-700">
+                    c = {fmt(world.c)}
+                  </span>
+                </div>
+                {stage > 1 && (
+                  <span
+                    className="flex items-center gap-1 rounded-full bg-stone-100 px-2.5 py-1 text-xs font-medium text-stone-600"
+                    title="Triangle dimensions are locked for steps 2–4. Return to Step 1 to change."
+                  >
+                    <Lock className="h-3 w-3 text-stone-500" aria-hidden="true" />
+                    Locked
+                  </span>
+                )}
               </div>
-              <div className="flex flex-wrap items-center gap-1.5">
-                {PRESETS.map(([pa, pb]) => (
+
+              {stage === 1 ? (
+                <div className="flex flex-wrap items-center gap-1.5">
+                  {PRESETS.map(([pa, pb]) => (
+                    <Button
+                      key={`${pa}-${pb}`}
+                      variant="outline"
+                      size="sm"
+                      className={cn(
+                        'min-h-10 rounded-full px-2.5 font-mono text-xs',
+                        legs[0] === pa && legs[1] === pb && 'border-teal-600 bg-teal-50 text-teal-800',
+                      )}
+                      onClick={() => {
+                        if (legs[0] === pa && legs[1] === pb) return;
+                        setLegs([pa, pb]);
+                        setDiag1(false);
+                        setDiag2(false);
+                        setCutAngle(15);
+                        setCutExecuted(false);
+                        setPlaced(0);
+                        setSolved(false);
+                        setStage(1);
+                      }}
+                      aria-label={`Use triangle ${pa}, ${pb}`}
+                    >
+                      {pa}–{pb}
+                    </Button>
+                  ))}
                   <Button
-                    key={`${pa}-${pb}`}
                     variant="outline"
                     size="sm"
-                    className={cn(
-                      'min-h-10 rounded-full px-2.5 font-mono text-xs',
-                      legs[0] === pa && legs[1] === pb && 'border-teal-600 bg-teal-50 text-teal-800',
-                    )}
-                    onClick={() => {
-                      if (legs[0] === pa && legs[1] === pb) return;
-                      setLegs([pa, pb]);
-                      setDiag1(false);
-                      setDiag2(false);
-                      setCutAngle(15);
-                      setCutExecuted(false);
-                      setPlaced(0);
-                      setSolved(false);
-                      setStage(1);
-                    }}
-                    aria-label={`Use triangle ${pa}, ${pb}`}
+                    className="min-h-10 gap-1 rounded-full px-2.5 text-xs"
+                    onClick={newTriangle}
                   >
-                    {pa}–{pb}
+                    <Dices className="h-3.5 w-3.5" aria-hidden="true" /> Random
                   </Button>
-                ))}
-                <Button
-                  variant="outline"
-                  size="sm"
-                  className="min-h-10 gap-1 rounded-full px-2.5 text-xs"
-                  onClick={newTriangle}
-                >
-                  <Dices className="h-3.5 w-3.5" aria-hidden="true" /> Random
-                </Button>
-              </div>
+                </div>
+              ) : (
+                <p className="text-xs text-stone-500" aria-live="polite">
+                  Triangle locked during dissection. Return to <strong>Step 1</strong> to select a different triangle.
+                </p>
+              )}
             </CardContent>
           </Card>
 
@@ -441,7 +460,7 @@ export function PerigalStudioView({ onNavigateModule }: PerigalStudioViewProps) 
                       <Button
                         onClick={() => setAutoSignal((s) => s + 1)}
                         disabled={!cutCorrect}
-                        className="min-h-11 gap-1.5 rounded-xl bg-teal-700 hover:bg-teal-800"
+                        className="col-span-2 min-h-11 gap-1.5 rounded-xl bg-teal-700 hover:bg-teal-800"
                       >
                         <Wand2 className="h-4 w-4" /> Auto-assemble
                       </Button>
@@ -466,13 +485,6 @@ export function PerigalStudioView({ onNavigateModule }: PerigalStudioViewProps) 
                         className="min-h-11 gap-1.5 rounded-xl border-teal-600 text-teal-800"
                       >
                         <Undo2 className="h-4 w-4" /> Fix the cut
-                      </Button>
-                      <Button
-                        variant="outline"
-                        onClick={newTriangle}
-                        className="min-h-11 gap-1.5 rounded-xl border-teal-600 text-teal-800"
-                      >
-                        <Dices className="h-4 w-4" /> New triangle
                       </Button>
                     </div>
                   </CardContent>
