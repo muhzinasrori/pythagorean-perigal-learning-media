@@ -77,7 +77,7 @@ export function createWorld(leg1: number, leg2: number): WorldModel {
     b,
     c,
     triangle: [vec(0, 0), vec(a, 0), vec(0, b)],
-    squareA: [vec(0, 0), vec(a, 0), vec(a, -a), vec(0, -a)],
+    squareA: [vec(0, 0), vec(0, -a), vec(a, -a), vec(a, 0)],
     squareB: [vec(0, 0), vec(0, b), vec(-b, b), vec(-b, 0)],
     squareC: [vec(a, 0), vec(a + b, a), vec(b, a + b), vec(0, b)],
     centerB: vec(-b / 2, b / 2),

@@ -8,12 +8,12 @@ import {
   computeAssembly,
 } from '@/lib/geometry/perigal';
 import {
-  angleBetweenDeg,
-  dist,
-  longestEdgeDirection,
   toPathString,
-  vec,
 } from '@/lib/geometry/primitives';
+import {
+  bestSlotFor,
+  PlacementReason,
+} from '@/lib/geometry/placement';
 import { makeProjector } from '@/features/shared/projector';
 import { PALETTE, PIECE_SHADES } from '@/lib/palette';
 
@@ -124,6 +124,14 @@ const shadeFor = (id: PieceId, index: number) =>
  * cut angle every piece is congruent to its slot, so the tween lands the
  * polygon EXACTLY on the slot — no visible seams.
  */
+const REASON_MESSAGES: Record<PlacementReason, string> = {
+  ok: '',
+  'too-far': 'Closer to its slot…',
+  'wrong-rotation': 'Rotate the piece first…',
+  'needs-flip': 'This piece is mirrored — flip it…',
+  'wrong-slot': 'Try another slot…',
+};
+
 export function AssemblyBoard({
   world,
   pieces,
@@ -136,10 +144,6 @@ export function AssemblyBoard({
   const svgRef = useRef<SVGSVGElement | null>(null);
   const proj = useMemo(() => makeProjector(world.bounds, W, H, 0.05), [world]);
   const plan = useMemo(() => computeAssembly(world), [world]);
-  const targetsById = useMemo(
-    () => new Map(plan.targets.map((t) => [t.id, t])),
-    [plan],
-  );
 
   const [placements, setPlacements] = useState<Record<PieceId, PieceState>>(
     () => Object.fromEntries(pieces.map((p) => [p.id, ZERO])) as Record<PieceId, PieceState>,
@@ -148,6 +152,15 @@ export function AssemblyBoard({
   useEffect(() => {
     placementsRef.current = placements;
   }, [placements]);
+
+  const [occupiedSlots, setOccupiedSlots] = useState<Record<PieceId, PieceId | null>>({
+    b1: null,
+    b2: null,
+    b3: null,
+    b4: null,
+    a: null,
+  });
+  const [hint, setHint] = useState<string | null>(null);
 
   const [activeId, setActiveId] = useState<PieceId | null>(null);
   const dragRef = useRef<{
@@ -190,47 +203,69 @@ export function AssemblyBoard({
   const snapPiece = useCallback(
     (id: PieceId, ignoreDistance: boolean) => {
       const piece = pieces.find((p) => p.id === id);
-      const target = targetsById.get(id);
-      if (!piece || !target) return;
+      if (!piece) return;
       // Pedagogical guard: with a wrong cut angle the shapes can never match,
       // so snapping (even forced) is disabled on purpose.
       if (!cutCorrect) return;
       const cur = placementsRef.current[id];
       if (cur.placed) return;
 
-      // current world-space centroid of the dragged piece
-      const worldDx = cur.dx / proj.scale;
-      const worldDy = -cur.dy / proj.scale;
-      const currentCentroid = vec(piece.centroid.x + worldDx, piece.centroid.y + worldDy);
-      const snapRadius = Math.max(0.7, world.a * 0.32);
-      if (!ignoreDistance && dist(currentCentroid, target.centroid) > snapRadius) return;
+      const occupiedSlotIds = Object.entries(occupiedSlots)
+        .filter(([slotId, pieceId]) => pieceId !== null && pieceId !== id)
+        .map(([slotId]) => slotId as PieceId);
 
-      const targetSvgCentroid = proj.toSvg(target.centroid);
-      const pieceSvgCentroid = proj.toSvg(piece.centroid);
-      // world CCW rotation appears negated in screen space (y is flipped)
-      let rot = -angleBetweenDeg(
-        longestEdgeDirection(piece.polygon),
-        longestEdgeDirection(target.polygon),
-      );
-      if (rot > 180) rot -= 360;
-      if (rot < -180) rot += 360;
+      const best = bestSlotFor(piece, plan.targets, {
+        dx: cur.dx,
+        dy: cur.dy,
+        rot: cur.rot,
+        scale: proj.scale,
+        snapRadius: Math.max(0.7, world.a * 0.32),
+        ignoreDistance,
+        occupiedSlotIds,
+      });
 
-      tweenTo(
-        id,
-        {
-          dx: targetSvgCentroid.x - pieceSvgCentroid.x,
-          dy: targetSvgCentroid.y - pieceSvgCentroid.y,
-          rot,
-          placed: true,
-        },
-        420,
-      );
+      if (!best || !best.verdict.accepted) {
+        // Rejection: do not snap; give visible + spoken feedback and shake/bounce
+        const reason = best?.verdict.reason ?? 'too-far';
+        setHint(REASON_MESSAGES[reason] ?? 'Keep trying…');
+        const bounceTimer = window.setTimeout(() => setHint(null), 2500);
+        timeoutsRef.current.push(bounceTimer);
 
-      const placedCount =
-        Object.values(placementsRef.current).filter((p) => p.placed).length + 1;
-      onPlacedChange?.(placedCount, pieces.length);
+        const shakeDur = 70;
+        const shakeAmt = 8;
+        runner.start(id, cur, { ...cur, dx: cur.dx + shakeAmt }, shakeDur);
+        const t1 = window.setTimeout(() => {
+          runner.start(id, { ...cur, dx: cur.dx + shakeAmt }, { ...cur, dx: cur.dx - shakeAmt }, shakeDur);
+          const t2 = window.setTimeout(() => {
+            runner.start(id, { ...cur, dx: cur.dx - shakeAmt }, cur, shakeDur);
+          }, shakeDur);
+          timeoutsRef.current.push(t2);
+        }, shakeDur);
+        timeoutsRef.current.push(t1);
+        return;
+      }
+
+      setHint(null);
+      const targetSlotId = best.target.id;
+      setOccupiedSlots((prev) => ({ ...prev, [targetSlotId]: id }));
+
+      const nextState: PieceState = {
+        dx: cur.dx + best.verdict.corrective.dx,
+        dy: cur.dy + best.verdict.corrective.dy,
+        rot: cur.rot + best.verdict.corrective.rotDelta,
+        placed: true,
+      };
+
+      tweenTo(id, nextState, 380);
+
+      setPlacements((prev) => {
+        const next = { ...prev, [id]: nextState };
+        const count = Object.values(next).filter((p) => p.placed).length;
+        onPlacedChange?.(count, pieces.length);
+        return next;
+      });
     },
-    [pieces, targetsById, proj, tweenTo, world.a, onPlacedChange, cutCorrect],
+    [pieces, plan.targets, proj, tweenTo, world.a, onPlacedChange, cutCorrect, occupiedSlots],
   );
 
   // Auto-assemble
@@ -324,143 +359,165 @@ export function AssemblyBoard({
   const holePlaced = placements['a']?.placed ?? false;
 
   return (
-    <svg
-      ref={svgRef}
-      viewBox={`0 0 ${W} ${H}`}
-      className="board-surface h-auto w-full select-none"
-      role="application"
-      aria-label="Assembly board: drag the pieces into the square on the hypotenuse. Use the Auto-assemble button for keyboard-free play."
-    >
-      {/* c² frame */}
-      <path d={toPathString(statics.c2)} fill={PALETTE.c.fillSoft} opacity="0.45" />
-      <path
-        d={toPathString(statics.c2)}
-        fill="none"
-        stroke={PALETTE.c.stroke}
-        strokeWidth="4"
-        strokeLinejoin="round"
-      />
+    <div className="relative w-full">
+      {/* Screen-reader drop feedback */}
+      <div aria-live="polite" className="sr-only">
+        {hint}
+      </div>
 
-      {/* central a² hole guide */}
-      <path
-        d={toPathString(statics.hole)}
-        fill={holePlaced ? 'none' : '#ffffff'}
-        fillOpacity={holePlaced ? 0 : 0.65}
-        stroke={PALETTE.c.stroke}
-        strokeWidth="2.5"
-        strokeDasharray={holePlaced ? undefined : '7 7'}
-        className={holePlaced ? undefined : 'dash-flow'}
-      />
-      {!holePlaced && (
-        <text
-          x={proj.toSvg(plan.targets.find((t) => t.id === 'a')!.centroid).x}
-          y={proj.toSvg(plan.targets.find((t) => t.id === 'a')!.centroid).y}
-          textAnchor="middle"
-          dominantBaseline="central"
-          fontSize={Math.max(13, world.a * proj.scale * 0.22)}
-          fontWeight={700}
-          className="fill-rose-700 font-mono"
-        >
-          a²
-        </text>
-      )}
+      <svg
+        ref={svgRef}
+        viewBox={`0 0 ${W} ${H}`}
+        className="board-surface h-auto w-full select-none"
+        role="application"
+        aria-label="Assembly board: drag the pieces into the square on the hypotenuse. Use the Auto-assemble button for keyboard-free play."
+      >
+        {/* c² frame */}
+        <path d={toPathString(statics.c2)} fill={PALETTE.c.fillSoft} opacity="0.45" />
+        <path
+          d={toPathString(statics.c2)}
+          fill="none"
+          stroke={PALETTE.c.stroke}
+          strokeWidth="4"
+          strokeLinejoin="round"
+        />
 
-      {/* slot guides */}
-      {cutCorrect &&
-        statics.slots
-          .filter((s) => s.id !== 'a')
-          .map((s) => (
-            <path
-              key={`slot-${s.id}`}
-              d={toPathString(s.pts)}
-              fill="none"
-              stroke={PALETTE.b.stroke}
-              strokeWidth="1.6"
-              strokeDasharray="5 6"
-              opacity="0.55"
-              pointerEvents="none"
-            />
-          ))}
-
-      {/* resting outlines (where pieces came from) */}
-      <path
-        d={toPathString(world.squareB.map(proj.toSvg))}
-        fill="none"
-        stroke={PALETTE.guide}
-        strokeWidth="1.6"
-        strokeDasharray="4 6"
-        opacity="0.7"
-        pointerEvents="none"
-      />
-      <path
-        d={toPathString(world.squareA.map(proj.toSvg))}
-        fill="none"
-        stroke={PALETTE.guide}
-        strokeWidth="1.6"
-        strokeDasharray="4 6"
-        opacity="0.7"
-        pointerEvents="none"
-      />
-      <path
-        d={toPathString(world.triangle.map(proj.toSvg))}
-        fill={PALETTE.triangle.fill}
-        opacity="0.5"
-        stroke={PALETTE.triangle.stroke}
-        strokeWidth="1.5"
-        pointerEvents="none"
-      />
-
-      {/* pieces */}
-      {ordered.map(({ piece, pts, centroidSvg }, index) => {
-        const st = placements[piece.id] ?? ZERO;
-        const label = piece.id === 'a' ? 'a' : piece.id.slice(1);
-        const labelFill = piece.id === 'a' ? PALETTE.a.text : '#134e4a';
-        return (
-          <g
-            key={piece.id}
-            transform={`translate(${st.dx} ${st.dy}) rotate(${st.rot} ${centroidSvg.x} ${centroidSvg.y})`}
-            onPointerDown={onPointerDown(piece.id)}
-            onPointerMove={onPointerMove}
-            onPointerUp={onPointerUp(piece.id)}
-            onPointerCancel={onPointerUp(piece.id)}
-            style={{
-              cursor: st.placed ? 'default' : activeId === piece.id ? 'grabbing' : 'grab',
-            }}
-            aria-label={`Puzzle piece ${label}`}
+        {/* central a² hole guide */}
+        <path
+          d={toPathString(statics.hole)}
+          fill={holePlaced ? 'none' : '#ffffff'}
+          fillOpacity={holePlaced ? 0 : 0.65}
+          stroke={PALETTE.c.stroke}
+          strokeWidth={activeId === 'a' && !holePlaced ? '4' : '2.5'}
+          strokeDasharray={holePlaced ? undefined : activeId === 'a' ? undefined : '7 7'}
+          className={holePlaced ? undefined : activeId === 'a' ? 'animate-pulse' : 'dash-flow'}
+          opacity={activeId === 'a' || activeId === null ? 1 : 0.35}
+        />
+        {!holePlaced && (
+          <text
+            x={proj.toSvg(plan.targets.find((t) => t.id === 'a')!.centroid).x}
+            y={proj.toSvg(plan.targets.find((t) => t.id === 'a')!.centroid).y}
+            textAnchor="middle"
+            dominantBaseline="central"
+            fontSize={Math.max(13, world.a * proj.scale * 0.22)}
+            fontWeight={700}
+            className="fill-rose-700 font-mono"
           >
-            <path
-              d={toPathString(pts)}
-              fill={shadeFor(piece.id, index)}
-              stroke={st.placed ? '#0f766e' : '#115e59'}
-              strokeWidth="2.5"
-              strokeLinejoin="round"
-              opacity={st.placed ? 0.96 : 1}
-            />
-            <circle
-              cx={centroidSvg.x}
-              cy={centroidSvg.y}
-              r={Math.max(10, Math.min(16, world.a * proj.scale * 0.14))}
-              fill="#ffffff"
-              opacity="0.92"
-              pointerEvents="none"
-            />
-            <text
-              x={centroidSvg.x}
-              y={centroidSvg.y}
-              textAnchor="middle"
-              dominantBaseline="central"
-              fontSize={Math.max(11, Math.min(15, world.a * proj.scale * 0.15))}
-              fontWeight={800}
-              className="font-mono"
-              fill={labelFill}
-              pointerEvents="none"
+            a²
+          </text>
+        )}
+
+        {/* slot guides */}
+        {cutCorrect &&
+          statics.slots
+            .filter((s) => s.id !== 'a')
+            .map((s) => {
+              const isOccupied = occupiedSlots[s.id] !== null;
+              const isCompatible = activeId !== null && activeId !== 'a' && !isOccupied;
+              return (
+                <path
+                  key={`slot-${s.id}`}
+                  d={toPathString(s.pts)}
+                  fill="none"
+                  stroke={PALETTE.b.stroke}
+                  strokeWidth={isCompatible ? '3.5' : '1.6'}
+                  strokeDasharray={isCompatible ? undefined : '5 6'}
+                  opacity={isCompatible ? '0.95' : activeId !== null ? '0.25' : '0.55'}
+                  pointerEvents="none"
+                />
+              );
+            })}
+
+        {/* resting outlines (where pieces came from) */}
+        <path
+          d={toPathString(world.squareB.map(proj.toSvg))}
+          fill="none"
+          stroke={PALETTE.guide}
+          strokeWidth="1.6"
+          strokeDasharray="4 6"
+          opacity="0.7"
+          pointerEvents="none"
+        />
+        <path
+          d={toPathString(world.squareA.map(proj.toSvg))}
+          fill="none"
+          stroke={PALETTE.guide}
+          strokeWidth="1.6"
+          strokeDasharray="4 6"
+          opacity="0.7"
+          pointerEvents="none"
+        />
+        <path
+          d={toPathString(world.triangle.map(proj.toSvg))}
+          fill={PALETTE.triangle.fill}
+          opacity="0.5"
+          stroke={PALETTE.triangle.stroke}
+          strokeWidth="1.5"
+          pointerEvents="none"
+        />
+
+        {/* pieces */}
+        {ordered.map(({ piece, pts, centroidSvg }, index) => {
+          const st = placements[piece.id] ?? ZERO;
+          const label = piece.id === 'a' ? 'a' : piece.id.slice(1);
+          const labelFill = piece.id === 'a' ? PALETTE.a.text : '#134e4a';
+          return (
+            <g
+              key={piece.id}
+              transform={`translate(${st.dx} ${st.dy}) rotate(${st.rot} ${centroidSvg.x} ${centroidSvg.y})`}
+              onPointerDown={onPointerDown(piece.id)}
+              onPointerMove={onPointerMove}
+              onPointerUp={onPointerUp(piece.id)}
+              onPointerCancel={onPointerUp(piece.id)}
+              style={{
+                cursor: st.placed ? 'default' : activeId === piece.id ? 'grabbing' : 'grab',
+              }}
+              aria-label={`Puzzle piece ${label}`}
             >
-              {label}
-            </text>
-          </g>
-        );
-      })}
-    </svg>
+              <path
+                d={toPathString(pts)}
+                fill={shadeFor(piece.id, index)}
+                stroke={st.placed ? '#0f766e' : '#115e59'}
+                strokeWidth="2.5"
+                strokeLinejoin="round"
+                opacity={st.placed ? 0.96 : 1}
+              />
+              <circle
+                cx={centroidSvg.x}
+                cy={centroidSvg.y}
+                r={Math.max(10, Math.min(16, world.a * proj.scale * 0.14))}
+                fill="#ffffff"
+                opacity="0.92"
+                pointerEvents="none"
+              />
+              <text
+                x={centroidSvg.x}
+                y={centroidSvg.y}
+                textAnchor="middle"
+                dominantBaseline="central"
+                fontSize={Math.max(11, Math.min(15, world.a * proj.scale * 0.15))}
+                fontWeight={800}
+                className="font-mono"
+                fill={labelFill}
+                pointerEvents="none"
+              >
+                {label}
+              </text>
+            </g>
+          );
+        })}
+      </svg>
+
+      {/* Floating feedback hint */}
+      {hint && (
+        <div
+          role="status"
+          className="pointer-events-none absolute bottom-3 left-1/2 -translate-x-1/2 rounded-full bg-stone-900/90 px-4 py-1.5 text-xs font-semibold text-white shadow-lg backdrop-blur-sm transition-all"
+        >
+          {hint}
+        </div>
+      )}
+    </div>
   );
 }
 
