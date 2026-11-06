@@ -57,13 +57,39 @@ bunx tsc --noEmit            # TypeScript check
 bun scripts/verify-geometry.ts  # geometry proof suite
 ```
 
-## ☁️ Deploy (one click)
+## ☁️ Deploy & Database Layer
 
-The app is 100% client-side — **no database, no API keys** — so it deploys anywhere:
+The app includes an embedded **SQLite database via Prisma ORM** for progress persistence, challenge leaderboard, and quiz records, while remaining 100% functional offline (local storage fallback):
 
-- **Vercel** (made by the creators of Next.js): push to GitHub → *Import Project* → done.
-- **Netlify / Cloudflare Pages / GitHub Pages**: `npm run build` then serve.
-- **School intranet**: `npm run build && npm start` on any machine.
+### Database & Environment Setup
+Copy `.env.example` to `.env`:
+```env
+DATABASE_URL="file:../db/custom.db"
+TEACHER_ACCESS_CODE="GURU2026"
+```
+
+Database commands:
+```bash
+pnpm run db:push     # Synchronize Prisma schema with local SQLite database
+pnpm run db:seed     # Populate demo students, challenge runs, and quiz attempts
+pnpm run db:studio   # Open Prisma Studio web inspector
+```
+
+### API Endpoints
+
+| Method | Endpoint | Description |
+|---|---|---|
+| `POST` | `/api/students` | Upsert student profile by UUID capability token (`{ token, displayName? }`) |
+| `GET` | `/api/progress?token=...` | Retrieve module progress records for a student |
+| `PUT` | `/api/progress` | Save/update module progress (`{ token, module, stage, completed, extra? }`) |
+| `POST` | `/api/challenge-runs` | Record speed challenge run and return leaderboard rank (`{ token, legA, legB, hypotenuse, durationMs, ... }`) |
+| `GET` | `/api/leaderboard?limit=10` | Top completed challenge runs sorted by duration |
+| `POST` | `/api/quiz-attempts` | Submit quiz attempt; computes pass/fail and returns personal best |
+| `GET` | `/api/quiz-attempts?token=...` | Retrieve quiz attempt history for a student |
+
+Deployment options:
+- **School intranet / Self-hosted**: `npm run build && npm start` on any machine with Node.js.
+- **Vercel / Cloud**: Push to GitHub → Import Project. SQLite database file is stored in `db/custom.db`.
 
 ## 🏗️ Project structure (feature-driven)
 

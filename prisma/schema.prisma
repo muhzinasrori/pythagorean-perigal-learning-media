@@ -1,9 +1,3 @@
-// This is your Prisma schema file,
-// learn more about it in the docs: https://pris.ly/d/prisma-schema
-
-// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
-// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
-
 generator client {
   provider = "prisma-client-js"
 }
@@ -13,20 +7,58 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
-model User {
-  id        String   @id @default(cuid())
-  email     String   @unique
-  name      String?
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+model Student {
+  id          String   @id @default(cuid())
+  token       String   @unique // client-generated UUID v4, no password
+  displayName String? // optional, max 24 chars, sanitized
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  progresses    ModuleProgress[]
+  challengeRuns ChallengeRun[]
+  quizAttempts  QuizAttempt[]
 }
 
-model Post {
+model ModuleProgress {
   id        String   @id @default(cuid())
-  title     String
-  content   String?
-  published Boolean  @default(false)
-  authorId  String
-  createdAt DateTime @default(now())
+  student   Student  @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  studentId String
+  module    String // 'm1' | 'm2' | 'm3'
+  stage     Int      @default(1) // highest step reached in that module
+  completed Boolean  @default(false)
+  extra     Json? // module-specific: legs, cutAngle, challengeMode…
   updatedAt DateTime @updatedAt
+
+  @@unique([studentId, module])
+}
+
+model ChallengeRun {
+  id            String   @id @default(cuid())
+  student       Student  @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  studentId     String
+  legA          Int
+  legB          Int
+  hypotenuse    Float
+  durationMs    Int
+  placedCount   Int      @default(5)
+  usedAuto      Boolean  @default(false) // solved via Auto-assemble assist
+  challengeMode Boolean  @default(false)
+  createdAt     DateTime @default(now())
+
+  @@index([durationMs])
+  @@index([studentId, durationMs])
+}
+
+model QuizAttempt {
+  id         String   @id @default(cuid())
+  student    Student  @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  studentId  String
+  score      Int // 0..5
+  total      Int      @default(5)
+  passed     Boolean
+  answers    Json // [{questionId, choice, correct}]
+  durationMs Int?
+  createdAt  DateTime @default(now())
+
+  @@index([studentId, createdAt])
 }
