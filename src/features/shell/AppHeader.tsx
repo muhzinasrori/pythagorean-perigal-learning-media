@@ -1,6 +1,7 @@
 'use client';
 
-import { CircleHelp, House } from 'lucide-react';
+import Link from 'next/link';
+import { CircleHelp, GraduationCap, House } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import type { ViewId } from './LearningApp';
 
@@ -47,6 +48,17 @@ export function AppHeader({ moduleTitle, onHelp, onHome }: AppHeaderProps) {
           >
             <CircleHelp className="h-4 w-4" aria-hidden="true" />
             <span className="hidden sm:inline">Help</span>
+          </Button>
+          <Button
+            asChild
+            variant="secondary"
+            size="sm"
+            className="min-h-11 gap-1.5 rounded-full bg-white/15 px-3 text-white shadow-none hover:bg-white/25 hover:text-white"
+          >
+            <Link href="/teacher" title="Teacher Analytics Dashboard">
+              <GraduationCap className="h-4 w-4" aria-hidden="true" />
+              <span className="hidden sm:inline">Teacher</span>
+            </Link>
           </Button>
           <span className="sr-only">
             <House /> Home

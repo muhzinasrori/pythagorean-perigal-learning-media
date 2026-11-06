@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useRef } from 'react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
@@ -10,6 +10,8 @@ import { Sparkles, Target } from 'lucide-react';
 import { AreaDiagram } from './AreaDiagram';
 import { fmt } from '@/lib/geometry/primitives';
 import { cn } from '@/lib/utils';
+import { getStudentToken } from '@/features/progress/identity';
+import { syncProgress } from '@/features/progress/sync';
 
 const TRIPLE_PRESETS: Array<[number, number]> = [
   [3, 4],
@@ -22,6 +24,34 @@ const TRIPLE_PRESETS: Array<[number, number]> = [
 export function AreaExplorerView() {
   const [a, setA] = useState(3);
   const [b, setB] = useState(4);
+  const hasInteractedRef = useRef(false);
+
+  // Trigger 1: First slider interaction records progress in m1 stage 1
+  const handleSliderChange = (setter: (v: number) => void, val: number) => {
+    setter(val);
+    if (!hasInteractedRef.current) {
+      hasInteractedRef.current = true;
+      syncProgress({
+        token: getStudentToken(),
+        module: 'm1',
+        stage: 1,
+        completed: false,
+      });
+    }
+  };
+
+  // Trigger 2: Clicking any triple preset marks m1 completed: true
+  const handleSelectPreset = (ta: number, tb: number) => {
+    setA(ta);
+    setB(tb);
+    syncProgress({
+      token: getStudentToken(),
+      module: 'm1',
+      stage: 1,
+      completed: true,
+      extra: { triple: [ta, tb] },
+    });
+  };
 
   const a2 = a * a;
   const b2 = b * b;
@@ -72,7 +102,7 @@ export function AreaExplorerView() {
                   max={15}
                   step={1}
                   value={[a]}
-                  onValueChange={(v) => setA(v[0])}
+                  onValueChange={(v) => handleSliderChange(setA, v[0])}
                   aria-label="Leg a length"
                 />
               </div>
@@ -92,7 +122,7 @@ export function AreaExplorerView() {
                   max={15}
                   step={1}
                   value={[b]}
-                  onValueChange={(v) => setB(v[0])}
+                  onValueChange={(v) => handleSliderChange(setB, v[0])}
                   aria-label="Leg b length"
                 />
               </div>
@@ -133,10 +163,7 @@ export function AreaExplorerView() {
                     key={`${ta}-${tb}`}
                     variant="outline"
                     size="sm"
-                    onClick={() => {
-                      setA(ta);
-                      setB(tb);
-                    }}
+                    onClick={() => handleSelectPreset(ta, tb)}
                     className={cn(
                       'min-h-11 rounded-full font-mono',
                       a === ta && b === tb && 'border-teal-600 bg-teal-50 text-teal-800',

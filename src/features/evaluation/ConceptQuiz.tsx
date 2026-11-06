@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useRef } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
 import { CheckCircle2, RotateCcw, XCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -8,6 +8,8 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Progress } from '@/components/ui/progress';
 import { QUIZ_QUESTIONS, PASS_SCORE } from './quizData';
 import { cn } from '@/lib/utils';
+import { getStudentToken } from '@/features/progress/identity';
+import { syncProgress, syncQuizAttempt } from '@/features/progress/sync';
 
 type Phase = 'answering' | 'feedback' | 'summary';
 
@@ -17,6 +19,8 @@ export function ConceptQuiz() {
   const [score, setScore] = useState(0);
   const [phase, setPhase] = useState<Phase>('answering');
   const [attempt, setAttempt] = useState(1);
+  const [userAnswers, setUserAnswers] = useState<Array<{ questionId: number; choice: number; correct: boolean }>>([]);
+  const startTimeRef = useRef<number>(Date.now());
 
   const q = QUIZ_QUESTIONS[index];
   const total = QUIZ_QUESTIONS.length;
@@ -27,12 +31,30 @@ export function ConceptQuiz() {
     if (phase !== 'answering') return;
     setSelected(i);
     setPhase('feedback');
-    if (i === q.correctIndex) setScore((s) => s + 1);
+    const isCorrect = i === q.correctIndex;
+    if (isCorrect) setScore((s) => s + 1);
+    setUserAnswers((prev) => [...prev, { questionId: q.id, choice: i, correct: isCorrect }]);
   };
 
   const next = () => {
     if (isLast) {
       setPhase('summary');
+      const token = getStudentToken();
+      const isPassed = score >= PASS_SCORE;
+      const durationMs = Date.now() - startTimeRef.current;
+      syncQuizAttempt({
+        token,
+        score,
+        total,
+        answers: userAnswers,
+        durationMs,
+      });
+      syncProgress({
+        token,
+        module: 'm3',
+        stage: 2,
+        completed: isPassed,
+      });
     } else {
       setIndex((i) => i + 1);
       setSelected(null);
@@ -44,6 +66,8 @@ export function ConceptQuiz() {
     setIndex(0);
     setSelected(null);
     setScore(0);
+    setUserAnswers([]);
+    startTimeRef.current = Date.now();
     setPhase('answering');
     setAttempt((a) => a + 1);
   };

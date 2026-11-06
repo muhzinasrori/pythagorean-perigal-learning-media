@@ -32,6 +32,8 @@ import {
 import { fmt } from '@/lib/geometry/primitives';
 import { cn } from '@/lib/utils';
 import type { ViewId } from '@/features/shell/LearningApp';
+import { getStudentToken } from '@/features/progress/identity';
+import { syncProgress } from '@/features/progress/sync';
 
 type Stage = 1 | 2 | 3 | 4;
 
@@ -90,10 +92,26 @@ export function PerigalStudioView({ onNavigateModule }: PerigalStudioViewProps) 
     setStage(1);
   };
 
+  const syncM2 = (nextStage: Stage, isSolved = solved) => {
+    syncProgress({
+      token: getStudentToken(),
+      module: 'm2',
+      stage: nextStage,
+      completed: isSolved,
+      extra: {
+        legs,
+        cutAngle,
+        placedCount: placed,
+        challengeMode: false,
+      },
+    });
+  };
+
   const goStage = (n: Stage) => {
     if (!unlocked(n)) return;
     if (n < 4) setSolved(false);
     setStage(n);
+    syncM2(n, n === 4 ? solved : false);
   };
 
   const handleSlider = (v: number) => {
@@ -165,7 +183,10 @@ export function PerigalStudioView({ onNavigateModule }: PerigalStudioViewProps) 
                 world={world}
                 pieces={boardPieces}
                 cutCorrect={cutCorrect}
-                onComplete={() => setSolved(true)}
+                onComplete={() => {
+                  setSolved(true);
+                  syncM2(4, true);
+                }}
                 onPlacedChange={setPlaced}
                 autoSignal={autoSignal}
               />
@@ -296,7 +317,10 @@ export function PerigalStudioView({ onNavigateModule }: PerigalStudioViewProps) 
                       </motion.p>
                     )}
                     <Button
-                      onClick={() => setStage(2)}
+                      onClick={() => {
+                        setStage(2);
+                        syncM2(2, false);
+                      }}
                       disabled={!diag2}
                       className="min-h-12 w-full gap-2 rounded-xl bg-teal-700 text-base hover:bg-teal-800"
                     >
@@ -372,6 +396,7 @@ export function PerigalStudioView({ onNavigateModule }: PerigalStudioViewProps) 
                       onClick={() => {
                         setCutExecuted(true);
                         setStage(3);
+                        syncM2(3, false);
                       }}
                       className="min-h-12 w-full gap-2 rounded-xl bg-teal-700 text-base font-bold hover:bg-teal-800"
                     >
@@ -409,6 +434,7 @@ export function PerigalStudioView({ onNavigateModule }: PerigalStudioViewProps) 
                         onClick={() => {
                           setCutExecuted(false);
                           setStage(2);
+                          syncM2(2, false);
                         }}
                         className="min-h-11 flex-1 gap-1.5 rounded-xl border-teal-600 text-teal-800"
                       >
@@ -419,6 +445,7 @@ export function PerigalStudioView({ onNavigateModule }: PerigalStudioViewProps) 
                           setBoardKey((k) => k + 1);
                           setPlaced(0);
                           setStage(4);
+                          syncM2(4, false);
                         }}
                         className="min-h-11 flex-1 gap-1.5 rounded-xl bg-teal-700 hover:bg-teal-800"
                       >
@@ -481,6 +508,7 @@ export function PerigalStudioView({ onNavigateModule }: PerigalStudioViewProps) 
                           setSolved(false);
                           setPlaced(0);
                           setStage(2);
+                          syncM2(2, false);
                         }}
                         className="min-h-11 gap-1.5 rounded-xl border-teal-600 text-teal-800"
                       >

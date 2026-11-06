@@ -7,6 +7,10 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Switch } from '@/components/ui/switch';
 import { AssemblyBoard } from '@/features/shared/AssemblyBoard';
+import { Badge } from '@/components/ui/badge';
+import { getStudentToken } from '@/features/progress/identity';
+import { submitChallengeRun } from '@/features/progress/sync';
+import { Leaderboard } from './Leaderboard';
 import {
   WorldModel,
   createWorld,
@@ -61,6 +65,8 @@ export function TimedChallenge({ onGoToQuiz }: TimedChallengeProps) {
   const [placed, setPlaced] = useState(0);
   const [solvedEver, setSolvedEver] = useState(false);
   const [lastUsedAuto, setLastUsedAuto] = useState(false);
+  const [rank, setRank] = useState<number | null>(null);
+  const [leaderboardVersion, setLeaderboardVersion] = useState(0);
   const [challengeMode, setChallengeMode] = useLocalStorage<boolean>(
     'pythagoras-challenge-mode',
     false,
@@ -91,6 +97,7 @@ export function TimedChallenge({ onGoToQuiz }: TimedChallengeProps) {
     setPlaced(0);
     setAutoSignal(0);
     setLastUsedAuto(false);
+    setRank(null);
     setRunId((r) => r + 1);
   }, [legs]);
 
@@ -110,8 +117,25 @@ export function TimedChallenge({ onGoToQuiz }: TimedChallengeProps) {
         setBestMs((best) => (best === null || dur < best ? dur : best));
       }
       setSolvedEver(true);
+
+      // Record to server challenge runs
+      submitChallengeRun({
+        token: getStudentToken(),
+        legA: legs[0],
+        legB: legs[1],
+        hypotenuse: world.c,
+        durationMs: Math.max(500, Math.round(dur)),
+        placedCount: 5,
+        usedAuto,
+        challengeMode,
+      }).then((res) => {
+        if (res && res.rank !== null) {
+          setRank(res.rank);
+          setLeaderboardVersion((v) => v + 1);
+        }
+      });
     },
-    [startedAt, setBestMs],
+    [startedAt, setBestMs, legs, world.c, challengeMode],
   );
 
   return (
@@ -222,10 +246,17 @@ export function TimedChallenge({ onGoToQuiz }: TimedChallengeProps) {
               className="rounded-2xl border-2 border-emerald-400 bg-emerald-50 p-5"
               role="status"
             >
-              <p className="flex items-center gap-2 text-base font-extrabold text-emerald-800">
-                <Timer className="h-5 w-5" aria-hidden="true" /> Assembled in{' '}
-                {formatTime((finishedAt - (startedAt ?? finishedAt)))}!
-              </p>
+              <div className="flex flex-wrap items-center gap-2">
+                <p className="flex items-center gap-2 text-base font-extrabold text-emerald-800">
+                  <Timer className="h-5 w-5" aria-hidden="true" /> Assembled in{' '}
+                  {formatTime((finishedAt - (startedAt ?? finishedAt)))}!
+                </p>
+                {rank !== null && !lastUsedAuto && (
+                  <Badge className="bg-amber-500 text-stone-950 font-bold hover:bg-amber-500">
+                    #{rank} of the class
+                  </Badge>
+                )}
+              </div>
               {lastUsedAuto && (
                 <p className="mt-1 text-xs font-semibold text-amber-700">
                   (Auto-assemble assisted — timer not counted for personal best)
@@ -245,6 +276,8 @@ export function TimedChallenge({ onGoToQuiz }: TimedChallengeProps) {
             </motion.div>
           )}
         </AnimatePresence>
+
+        <Leaderboard refreshTrigger={leaderboardVersion} />
       </div>
     </div>
   );
