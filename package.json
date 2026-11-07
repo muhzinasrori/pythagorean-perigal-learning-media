@@ -4,7 +4,7 @@
   "private": true,
   "scripts": {
     "dev": "next dev -p 3000",
-    "build": "next build && xcopy .next\\static .next\\standalone\\.next\\static\\ /E /I /Y && xcopy public .next\\standalone\\public\\ /E /I /Y && xcopy db .next\\standalone\\db\\ /E /I /Y",
+    "build": "prisma generate && next build",
     "start": "node .next/standalone/server.js",
     "lint": "eslint .",
     "verify:geometry": "tsx scripts/verify-geometry.ts",
