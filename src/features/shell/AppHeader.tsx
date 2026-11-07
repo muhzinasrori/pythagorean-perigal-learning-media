@@ -1,5 +1,6 @@
 'use client';
 
+import Image from 'next/image';
 import Link from 'next/link';
 import { CircleHelp, GraduationCap, House } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -21,11 +22,13 @@ export function AppHeader({ moduleTitle, onHelp, onHome }: AppHeaderProps) {
           className="flex min-h-11 items-center gap-2.5 rounded-lg px-1.5 text-left focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-amber-300"
           aria-label="Go to home"
         >
-          <svg viewBox="0 0 28 28" className="h-8 w-8 shrink-0" aria-hidden="true">
-            <rect x="1.5" y="14.5" width="11" height="11" rx="1.5" fill="#fbbf24" />
-            <rect x="14.5" y="1.5" width="11" height="11" rx="1.5" fill="#5eead4" opacity="0.9" />
-            <path d="M3 25 L25 3 L25 25 Z" fill="#fb7185" opacity="0.92" />
-          </svg>
+          <Image
+            src="/logo.svg"
+            alt="Pythagoras Lab Logo"
+            width={32}
+            height={32}
+            className="h-8 w-8 shrink-0 object-contain"
+          />
           <span className="leading-tight">
             <span className="block text-[15px] font-bold tracking-tight">Pythagoras Lab</span>
             <span className="block text-[11px] font-medium text-teal-100/90">
