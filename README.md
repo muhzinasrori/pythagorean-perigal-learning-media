@@ -7,6 +7,11 @@ square on the hypotenuse **exactly**.
 
 > Built with the **Guided Discovery Learning** model: *Predict → Construct → Reflect.*
 
+[![Deploy with Vercel](https://shields.io)](https://pythagorean-perigal-learning-media.vercel.app/)
+
+> 🔗 **Live Web Application:** [https://pythagorean-perigal-learning-media.vercel.app/](https://pythagorean-perigal-learning-media.vercel.app/)
+
+
 ---
 
 ## ✨ What's inside
