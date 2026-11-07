@@ -11,12 +11,13 @@ square on the hypotenuse **exactly**.
 
 ## ✨ What's inside
 
-| Module | Experience |
+| Module | Core Experience & Pedagogy [1] |
 | --- | --- |
-| **Landing** | Hero with animated 3-4-5 diagram, learning path, guided-discovery pedagogy overview |
-| **Module 1 · Areas & Triples** | Live SVG diagram with sliders for legs *a* and *b*, real-time square areas, live equation, Pythagorean-triple detection & presets |
-| **Module 2 · Perigal Studio** (core) | 4-stage construction: **①** draw diagonals → find centre **O** · **②** rotate the cutting lines (0–180°) with **Magnet Mode** (locks green when parallel to the hypotenuse) or **Free Mode** · **③** CUT NOW — animated dissection into 4 congruent pieces · **④** drag & drop pieces + a² into the c² frame with exact snap (translate + rotate tween), overlap/gap feedback for wrong cuts, Auto-assemble demo |
-| **Module 3 · Challenge & Quiz** | **Speed challenge**: random puzzles, timer starts on first grab, best time saved (localStorage) · **Concept quiz**: 5 MCQs, instant grading, explanations, pass mark 4/5 |
+| **Landing Page** | Welcome hero featuring an animated 3-4-5 right-triangle diagram and an overview of the guided-discovery path. |
+| **Module 1: Areas & Triples** | Live SVG diagram with interactive sliders for legs *a* and *b*. Shows dynamic square area calculations and equations in real-time, complete with preset Pythagorean-triple chips (3-4-5, 5-12-13, etc.). |
+| **Module 2: Perigal Studio** | The heart of the lesson. A 4-stage interactive construction studio: <br>• **Step 1:** Draw diagonals to find centre **O** [1].<br>• **Step 2:** Rotate cutting lines with **Magnet Mode** (locks parallel to the hypotenuse) or Free Mode [1].<br>• **Step 3:** CUT NOW — interactive split into 4 congruent pieces [1].<br>• **Step 4:** Drag & drop pieces + *a²* into the *c²* frame with rotation/overlap feedback. |
+| **Module 3: Challenge & Quiz** | • **Speed Challenge:** Randomly generated right-triangles where students race the clock to assemble the puzzle. Saves personal best times locally [1].<br>• **Concept Quiz:** 5 formative multiple-choice questions with instant feedback and analytical explanations. |
+| **Teacher Dashboard** | A secure data center that gives educators a real-time overview of the classroom's progress, leaderboard standing, and quiz pass rates. |
 
 Every square keeps a **consistent color code** across all modules: a² = amber · b² = teal · c² = rose.
 
@@ -94,24 +95,43 @@ Deployment options:
 ## 🏗️ Project structure (feature-driven)
 
 ```
-src/
-├── app/                      # App Router shell (single `/` route, SPA modules)
-├── lib/
-│   ├── geometry/
-│   │   ├── primitives.ts     # Vec2, polygons, clipping (pure, tested)
-│   │   └── perigal.ts        # Perigal dissection + assembly engine
-│   └── palette.ts            # a²/b²/c² color system
-├── features/
-│   ├── shell/                # Header, footer nav, help dialog, view state machine
-│   ├── landing/              # Hero + module cards
-│   ├── area-explorer/        # Module 1
-│   ├── perigal/              # Module 2 (4-stage studio canvas + controls)
-│   ├── evaluation/           # Module 3 (challenge + quiz)
-│   └── shared/               # AssemblyBoard (drag-drop puzzle), projector
-├── components/ui/            # shadcn/ui primitives
-└── hooks/                    # useLocalStorage (useSyncExternalStore)
-scripts/
-└── verify-geometry.ts        # Mathematical proof suite
+pythagorean-perigal-learning-media/
+├── db/
+│   └── custom.db               # Embedded SQLite database file managed by Prisma ORM
+├── prisma/
+│   ├── schema.prisma           # Prisma data models and schema configuration (SQLite provider)
+│   └── seed.ts                 # Idempotent database seeder for demo profiles, runs, and quiz attempts
+├── public/                     # Static client assets (App Logo SVG, robots.txt)
+├── scripts/                    # Geometric analytical verification suite and API smoke tests
+├── src/
+│   ├── app/                    # Next.js App Router routing shell (Single-Page App modules)
+│   │   ├── api/                # Route Handlers for background progress sync, runs, and grading
+│   │   │   ├── challenge-runs/
+│   │   │   ├── leaderboard/
+│   │   │   ├── progress/
+│   │   │   └── quiz-attempts/
+│   │   ├── teacher/            # Protected real-time classroom analytics monitoring page
+│   │   │   └── page.tsx
+│   │   ├── globals.css         # Tailwind CSS 4 configurations and core layout grid animations
+│   │   └── page.tsx            # Application core entry point (SPA view state manager)
+│   ├── components/
+│   │   └── ui/                 # Atomic, headless UI primitives (shadcn/ui layered over Radix)
+│   ├── features/               # Main application modules (Feature-Driven Architecture)
+│   │   ├── area-explorer/      # Module 1: Live dynamic SVG square area explorer and leg sliders
+│   │   ├── perigal/            # Module 2: 4-stage core construction studio for square dissection
+│   │   ├── evaluation/         # Module 3: Speed challenge boards and formative concept quiz
+│   │   ├── landing/            # Guided discovery introduction hub and animated 3-4-5 canvas hero
+│   │   ├── progress/           # Student UUID token generation and background network synchronization
+│   │   ├── shared/             # Reusable puzzle canvases (AssemblyBoard pointer event engine)
+│   │   └── shell/              # Core layout scaffolds (AppHeader, Footer, and Help instructions)
+│   ├── hooks/                  # Global React hooks (useSyncExternalStore local storage, mobile checks)
+│   └── lib/                    # Shared pure functions, theme anchors, and mathematical constants
+│       ├── geometry/           # Analytical Perigal dissection algorithms and plane clipping engines
+│       └── utils.ts
+├── .env                        # Local production environment secrets (Database URL, Teacher Code)
+├── next.config.ts              # Next.js server configuration (standalone cluster output engine)
+├── package.json                # Project script registry and node dependencies (React 19, Next 16)
+└── tailwind.config.ts          # Color tokens for strict color-coded Amber/Teal/Rose architecture
 ```
 
 ## 🛠️ Tech stack
