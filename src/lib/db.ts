@@ -26,8 +26,8 @@ function getDatabaseUrl(): string | undefined {
       path.resolve(process.cwd(), 'db/custom.db'),
       path.resolve(process.cwd(), '../db/custom.db'),
       path.resolve(process.cwd(), '../../db/custom.db'),
-      path.resolve(process.cwd(), /*turbopackIgnore: true*/ rawPath),
-      path.resolve(process.cwd(), 'prisma', /*turbopackIgnore: true*/ rawPath),
+      path.resolve(/*turbopackIgnore: true*/ process.cwd(), rawPath),
+      path.resolve(/*turbopackIgnore: true*/ process.cwd(), 'prisma', rawPath),
     ]
 
     for (const candidate of candidates) {
