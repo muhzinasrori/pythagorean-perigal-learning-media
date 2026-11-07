@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
+import { trackEvent } from '@/lib/analytics';
 import { AppHeader } from './AppHeader';
 import { ModuleFooterNav } from './ModuleFooterNav';
 import { HelpDialog } from './HelpDialog';
@@ -31,15 +32,23 @@ export function LearningApp() {
   const [helpOpen, setHelpOpen] = useState(false);
 
   const indexOf = VIEW_ORDER.indexOf(view);
-  const goNext = () => setView(VIEW_ORDER[Math.min(indexOf + 1, VIEW_ORDER.length - 1)]);
-  const goBack = () => setView(VIEW_ORDER[Math.max(indexOf - 1, 0)]);
+
+  // Central navigation — also fires a GA4 event so the teacher/analytics
+  // layer can see which modules students actually open (no-op without GA).
+  const changeView = (v: ViewId) => {
+    setView(v);
+    trackEvent('module_view', { view_name: v });
+  };
+
+  const goNext = () => changeView(VIEW_ORDER[Math.min(indexOf + 1, VIEW_ORDER.length - 1)]);
+  const goBack = () => changeView(VIEW_ORDER[Math.max(indexOf - 1, 0)]);
 
   return (
     <div className="min-h-screen flex flex-col bg-gradient-to-b from-stone-50 via-background to-teal-50/40">
       <AppHeader
         moduleTitle={MODULE_TITLES[view]}
         onHelp={() => setHelpOpen(true)}
-        onHome={() => setView('landing')}
+        onHome={() => changeView('landing')}
       />
 
       <main className="flex-1 w-full max-w-7xl mx-auto px-3 sm:px-5 py-5 sm:py-7">
@@ -51,15 +60,15 @@ export function LearningApp() {
             exit={{ opacity: 0, y: -10 }}
             transition={{ duration: 0.25, ease: 'easeOut' }}
           >
-            {view === 'landing' && <LandingView onNavigate={setView} />}
+            {view === 'landing' && <LandingView onNavigate={changeView} />}
             {view === 'm1' && <AreaExplorerView />}
-            {view === 'm2' && <PerigalStudioView onNavigateModule={setView} />}
+            {view === 'm2' && <PerigalStudioView onNavigateModule={changeView} />}
             {view === 'm3' && <EvaluationView />}
           </motion.div>
         </AnimatePresence>
       </main>
 
-      <ModuleFooterNav current={view} onChange={setView} onBack={goBack} onNext={goNext} />
+      <ModuleFooterNav current={view} onChange={changeView} onBack={goBack} onNext={goNext} />
       <HelpDialog open={helpOpen} onOpenChange={setHelpOpen} topic={view} />
     </div>
   );

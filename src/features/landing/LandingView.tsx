@@ -5,8 +5,15 @@ import { ArrowRight, Compass, Scissors, Timer, Trophy } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent } from '@/components/ui/card';
+import {
+  Accordion,
+  AccordionContent,
+  AccordionItem,
+  AccordionTrigger,
+} from '@/components/ui/accordion';
 import type { ViewId } from '@/features/shell/LearningApp';
 import { PALETTE } from '@/lib/palette';
+import { FAQ_ITEMS } from '@/lib/seo';
 
 interface LandingViewProps {
   onNavigate: (v: ViewId) => void;
@@ -288,6 +295,30 @@ export function LandingView({ onNavigate }: LandingViewProps) {
             <p className="text-sm leading-relaxed text-stone-600">{s.text}</p>
           </div>
         ))}
+      </section>
+
+      {/* FAQ — crawlable content; MUST stay identical to the FAQPage JSON-LD
+          (single source of truth: FAQ_ITEMS in src/lib/seo.ts). */}
+      <section aria-labelledby="faq-title" className="space-y-4">
+        <h2 id="faq-title" className="text-xl font-bold text-stone-900">
+          Frequently asked questions
+        </h2>
+        <Accordion
+          type="single"
+          collapsible
+          className="rounded-2xl border border-stone-200 bg-white px-4 shadow-sm"
+        >
+          {FAQ_ITEMS.map((item, i) => (
+            <AccordionItem key={item.question} value={`faq-${i}`}>
+              <AccordionTrigger className="text-left text-[15px] font-semibold text-stone-800 hover:no-underline">
+                {item.question}
+              </AccordionTrigger>
+              <AccordionContent className="text-sm leading-relaxed text-stone-600">
+                {item.answer}
+              </AccordionContent>
+            </AccordionItem>
+          ))}
+        </Accordion>
       </section>
     </div>
   );

@@ -2,7 +2,9 @@ import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
   output: "standalone",
-  /* config options here */
+  // SEO / performance hardening
+  poweredByHeader: false, // don't advertise "X-Powered-By: Next.js"
+  compress: true, // gzip responses when the host doesn't already
   typescript: {
     ignoreBuildErrors: true,
   },

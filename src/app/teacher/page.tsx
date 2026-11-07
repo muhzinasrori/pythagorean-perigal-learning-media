@@ -1,3 +1,4 @@
+import type { Metadata } from 'next';
 import { cookies } from 'next/headers';
 import Link from 'next/link';
 import { db } from '@/lib/db';
@@ -26,6 +27,16 @@ import {
 } from 'lucide-react';
 
 export const dynamic = 'force-dynamic';
+
+// The teacher dashboard is private (student data) — keep it out of search engines.
+export const metadata: Metadata = {
+  title: 'Teacher Dashboard',
+  robots: {
+    index: false,
+    follow: false,
+    nocache: true,
+  },
+};
 
 interface PageProps {
   searchParams: Promise<{ sort?: string }>;
