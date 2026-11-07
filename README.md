@@ -5,12 +5,9 @@ the Pythagorean Theorem (**a² + b² = c²**) by building Henry Perigal's famous
 with their own hands — cut the square on the longer leg, drag the pieces, and watch them fill the
 square on the hypotenuse **exactly**.
 
+🔗 **Live Web Application:** [https://pythagorean-perigal-learning-media.vercel.app/](https://pythagorean-perigal-learning-media.vercel.app/)
+
 > Built with the **Guided Discovery Learning** model: *Predict → Construct → Reflect.*
-
-[![Deploy with Vercel](https://shields.io)](https://pythagorean-perigal-learning-media.vercel.app/)
-
-> 🔗 **Live Web Application:** [https://pythagorean-perigal-learning-media.vercel.app/](https://pythagorean-perigal-learning-media.vercel.app/)
-
 
 ---
 
