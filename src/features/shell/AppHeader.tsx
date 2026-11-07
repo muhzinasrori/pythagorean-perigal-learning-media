@@ -30,7 +30,7 @@ export function AppHeader({ moduleTitle, onHelp, onHome }: AppHeaderProps) {
             className="h-8 w-8 shrink-0 object-contain"
           />
           <span className="leading-tight">
-            <span className="block text-[15px] font-bold tracking-tight">Pythagoras Lab</span>
+            <span className="block text-[15px] font-bold tracking-tight">Pythagorean Lab</span>
             <span className="block text-[11px] font-medium text-teal-100/90">
               Perigal&apos;s Dissection · Grade 8
             </span>

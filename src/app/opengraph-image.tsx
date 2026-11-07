@@ -7,7 +7,7 @@ import { ImageResponse } from "next/og";
  */
 
 export const alt =
-  "Pythagoras Lab — Perigal's Dissection: interactive Grade 8 math lab for the Pythagorean Theorem (a² + b² = c²)";
+  "Pythagorean Lab — Perigal's Dissection: interactive Grade 8 math lab for the Pythagorean Theorem (a² + b² = c²)";
 
 export const size = { width: 1200, height: 630 };
 
@@ -83,7 +83,7 @@ export default function OpengraphImage() {
                 lineHeight: 1.12,
               }}
             >
-              <span>Pythagoras Lab</span>
+              <span>Pythagorean Lab</span>
               <span style={{ color: "#0f766e" }}>Perigal&apos;s Dissection</span>
             </div>
 
