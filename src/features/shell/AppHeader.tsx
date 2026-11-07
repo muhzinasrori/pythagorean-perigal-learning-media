@@ -3,6 +3,7 @@
 import Link from 'next/link';
 import { CircleHelp, GraduationCap, House } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { NameDialog } from '@/features/progress/NameDialog';
 import type { ViewId } from './LearningApp';
 
 interface AppHeaderProps {
@@ -40,6 +41,7 @@ export function AppHeader({ moduleTitle, onHelp, onHome }: AppHeaderProps) {
           >
             {moduleTitle}
           </span>
+          <NameDialog />
           <Button
             variant="secondary"
             size="sm"

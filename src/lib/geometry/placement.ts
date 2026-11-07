@@ -153,7 +153,11 @@ export function rigidAlignment(
       if (d > maxErr) maxErr = d;
     }
 
-    if (maxErr < minDirectErr) {
+    const isDirectBetter =
+      maxErr < minDirectErr - 1e-5 ||
+      (Math.abs(maxErr - minDirectErr) <= 1e-5 && Math.abs(rot) < Math.abs(bestDirectRot));
+
+    if (isDirectBetter) {
       minDirectErr = maxErr;
       bestDirectShift = k;
       bestDirectRot = rot;
@@ -185,7 +189,11 @@ export function rigidAlignment(
       if (d > maxErr) maxErr = d;
     }
 
-    if (maxErr < minMirroredErr) {
+    const isMirroredBetter =
+      maxErr < minMirroredErr - 1e-5 ||
+      (Math.abs(maxErr - minMirroredErr) <= 1e-5 && Math.abs(rot) < Math.abs(bestMirroredRot));
+
+    if (isMirroredBetter) {
       minMirroredErr = maxErr;
       bestMirroredShift = k;
       bestMirroredRot = rot;
