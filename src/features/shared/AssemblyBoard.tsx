@@ -459,6 +459,31 @@ export function AssemblyBoard({
 
   const holePlaced = placements['a']?.placed ?? false;
 
+  const selectedPieceData = selectedId
+    ? ordered.find((o) => o.piece.id === selectedId)
+    : null;
+
+  let controlPosition: { x: number; y: number } | undefined = undefined;
+
+  if (selectedId && !activeId && selectedPieceData && svgRef.current) {
+    const st = placements[selectedId!] ?? ZERO;
+
+    // Dapatkan ukuran fisik & skala SVG di layar browser
+    const svgBounds = svgRef.current.getBoundingClientRect();
+    const scaleX = svgBounds.width / W;
+    const scaleY = svgBounds.height / H;
+
+    // Koordinat centroid SVG + pergeseran drag (dx, dy)
+    const currentSvgX = selectedPieceData.centroidSvg.x + st.dx;
+    const currentSvgY = selectedPieceData.centroidSvg.y + st.dy;
+
+    // Konversi ke skala piksel container HTML
+    controlPosition = {
+      x: currentSvgX * scaleX,
+      y: Math.max(50, currentSvgY * scaleY - 20), // Batas atas minimal 50px agar tidak keluar dari layar
+    };
+  }
+
   return (
     <div
       className="relative w-full"
@@ -470,18 +495,21 @@ export function AssemblyBoard({
       </div>
 
       {/* Floating piece controls for selected piece */}
-      {selectedId && !placements[selectedId]?.placed && (
+      {selectedId && !activeId && !placements[selectedId]?.placed && controlPosition && (
         <div
-          className="absolute top-3 left-1/2 -translate-x-1/2 z-20"
+          className="absolute inset-0 pointer-events-none z-30"
           onClick={(e) => e.stopPropagation()}
         >
-          <PieceControls
-            pieceId={selectedId}
-            onRotateCW={() => rotatePiece(selectedId, 90)}
-            onRotateCCW={() => rotatePiece(selectedId, -90)}
-            onFlip={() => flipPiece(selectedId)}
-            onDeselect={() => setSelectedId(null)}
-          />
+          <div className="pointer-events-auto inline-block">
+            <PieceControls
+              pieceId={selectedId}
+              position={controlPosition}
+              onRotateCW={() => rotatePiece(selectedId, 90)}
+              onRotateCCW={() => rotatePiece(selectedId, -90)}
+              onFlip={() => flipPiece(selectedId)}
+              onDeselect={() => setSelectedId(null)}
+            />
+          </div>
         </div>
       )}
 

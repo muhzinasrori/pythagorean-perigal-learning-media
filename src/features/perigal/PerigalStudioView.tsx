@@ -206,32 +206,23 @@ export function PerigalStudioView({ onNavigateModule }: PerigalStudioViewProps) 
         {/* Control panel */}
         <div className="space-y-4">
           {/* Triangle info + presets */}
-          <Card className="rounded-2xl border-stone-200">
-            <CardContent className="space-y-3 p-5">
-              <div className="flex items-center justify-between gap-2">
-                <div className="flex flex-wrap items-center gap-2 font-mono text-sm font-bold">
-                  <span className="rounded-lg bg-amber-100 px-2.5 py-1 text-amber-900">
-                    a = {fmt(world.a)}
-                  </span>
-                  <span className="rounded-lg bg-teal-100 px-2.5 py-1 text-teal-900">
-                    b = {fmt(world.b)}
-                  </span>
-                  <span className="rounded-lg bg-rose-100 px-2.5 py-1 text-rose-700">
-                    c = {fmt(world.c)}
-                  </span>
+          {stage === 1 && (
+            <Card className="rounded-2xl border-stone-200">
+              <CardContent className="space-y-3 p-5">
+                <div className="flex items-center justify-between gap-2">
+                  <div className="flex flex-wrap items-center gap-2 font-mono text-sm font-bold">
+                    <span className="rounded-lg bg-amber-100 px-2.5 py-1 text-amber-900">
+                      a = {fmt(world.a)}
+                    </span>
+                    <span className="rounded-lg bg-teal-100 px-2.5 py-1 text-teal-900">
+                      b = {fmt(world.b)}
+                    </span>
+                    <span className="rounded-lg bg-rose-100 px-2.5 py-1 text-rose-700">
+                      c = {fmt(world.c)}
+                    </span>
+                  </div>
                 </div>
-                {stage > 1 && (
-                  <span
-                    className="flex items-center gap-1 rounded-full bg-stone-100 px-2.5 py-1 text-xs font-medium text-stone-600"
-                    title="Triangle dimensions are locked for steps 2–4. Return to Step 1 to change."
-                  >
-                    <Lock className="h-3 w-3 text-stone-500" aria-hidden="true" />
-                    Locked
-                  </span>
-                )}
-              </div>
 
-              {stage === 1 ? (
                 <div className="flex flex-wrap items-center gap-1.5">
                   {PRESETS.map(([pa, pb]) => (
                     <Button
@@ -240,10 +231,10 @@ export function PerigalStudioView({ onNavigateModule }: PerigalStudioViewProps) 
                       size="sm"
                       className={cn(
                         'min-h-10 rounded-full px-2.5 font-mono text-xs',
-                        legs[0] === pa && legs[1] === pb && 'border-teal-600 bg-teal-50 text-teal-800',
+                        legs === pa && legs === pb && 'border-teal-600 bg-teal-50 text-teal-800',
                       )}
                       onClick={() => {
-                        if (legs[0] === pa && legs[1] === pb) return;
+                        if (legs === pa && legs === pb) return;
                         setLegs([pa, pb]);
                         setDiag1(false);
                         setDiag2(false);
@@ -267,13 +258,9 @@ export function PerigalStudioView({ onNavigateModule }: PerigalStudioViewProps) 
                     <Dices className="h-3.5 w-3.5" aria-hidden="true" /> Random
                   </Button>
                 </div>
-              ) : (
-                <p className="text-xs text-stone-500" aria-live="polite">
-                  Triangle locked during dissection. Return to <strong>Step 1</strong> to select a different triangle.
-                </p>
-              )}
-            </CardContent>
-          </Card>
+              </CardContent>
+            </Card>
+          )}
 
           <AnimatePresence mode="wait">
             {/* ---------------- STAGE 1 ---------------- */}
@@ -524,48 +511,67 @@ export function PerigalStudioView({ onNavigateModule }: PerigalStudioViewProps) 
           {/* Success banner */}
           <AnimatePresence>
             {solved && (
-              <motion.div
-                initial={{ opacity: 0, scale: 0.92, y: 12 }}
-                animate={{ opacity: 1, scale: 1, y: 0 }}
-                exit={{ opacity: 0 }}
-                transition={{ type: 'spring', stiffness: 220, damping: 18 }}
-                className="overflow-hidden rounded-2xl border-2 border-emerald-400 bg-gradient-to-br from-emerald-50 to-teal-50 shadow-lg"
-                role="status"
-              >
-                <div className="space-y-3 p-5">
-                  <p className="flex items-center gap-2 text-base font-extrabold text-emerald-800">
-                    <Sparkles className="h-5 w-5 text-amber-500" aria-hidden="true" />
-                    Proof complete — a² + b² = c² !
-                  </p>
-                  <p className="font-mono text-lg font-bold text-stone-800">
-                    <span className="text-amber-700">{fmt(world.a * world.a)}</span>
-                    <span className="text-stone-400"> + </span>
-                    <span className="text-teal-700">{fmt(world.b * world.b)}</span>
-                    <span className="text-stone-400"> = </span>
-                    <span className="text-rose-600">{fmt(world.a * world.a + world.b * world.b)}</span>
-                    <span className="ml-2 font-sans text-sm font-medium text-stone-500">
-                      — the four pieces plus a² filled c² exactly.
-                    </span>
-                  </p>
-                  <div className="flex flex-wrap gap-2 pt-1">
-                    <Button
-                      onClick={newTriangle}
-                      className="min-h-11 gap-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-700"
-                    >
-                      <Dices className="h-4 w-4" /> Try another triangle
-                    </Button>
-                    {onNavigateModule && (
+              <div className="fixed inset-0 z-50 flex items-center justify-center bg-stone-900/60 p-4 backdrop-blur-sm">
+                <motion.div
+                  initial={{ opacity: 0, scale: 0.85, y: 20 }}
+                  animate={{ opacity: 1, scale: 1, y: 0 }}
+                  exit={{ opacity: 0, scale: 0.9, y: 10 }}
+                  transition={{ type: 'spring', stiffness: 300, damping: 25 }}
+                  className="relative w-full max-w-lg overflow-hidden rounded-3xl border-2 border-emerald-400 bg-white p-6 shadow-2xl"
+                  role="dialog"
+                  aria-modal="true"
+                >
+                  <div className="space-y-5 text-center sm:text-left">
+                    {/* Header */}
+                    <div className="flex items-center gap-3">
+                      <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-emerald-100 text-emerald-700 shrink-0">
+                        <Sparkles className="h-6 w-6 text-amber-500" aria-hidden="true" />
+                      </div>
+                      <div>
+                        <h2 className="text-xl font-extrabold text-emerald-900 sm:text-2xl">
+                          Proof Complete — a² + b² = c² !
+                        </h2>
+                        <p className="text-xs font-semibold text-emerald-700">
+                          Pythagorean Theorem Dissection Proven
+                        </p>
+                      </div>
+                    </div>
+
+                    {/* Math Equation */}
+                    <div className="rounded-2xl bg-emerald-50/80 p-4 font-mono text-xl font-extrabold text-stone-800 text-center border border-emerald-100 shadow-inner">
+                      <span className="text-amber-700">{fmt(world.a * world.a)}</span>
+                      <span className="text-stone-400"> + </span>
+                      <span className="text-teal-700">{fmt(world.b * world.b)}</span>
+                      <span className="text-stone-400"> = </span>
+                      <span className="text-rose-600">{fmt(world.a * world.a + world.b * world.b)}</span>
+                    </div>
+
+                    {/* Description */}
+                    <p className="text-sm leading-relaxed text-stone-600">
+                      The four pieces of <strong>b²</strong> plus <strong>a²</strong> filled <strong>c²</strong> exactly!
+                    </p>
+
+                    {/* Action Buttons */}
+                    <div className="flex flex-col gap-2.5 pt-2 sm:flex-row">
                       <Button
-                        variant="outline"
-                        onClick={() => onNavigateModule('m3')}
-                        className="min-h-11 gap-1.5 rounded-xl border-emerald-500 text-emerald-800 hover:bg-emerald-50"
+                        onClick={newTriangle}
+                        className="min-h-11 flex-1 gap-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold shadow-md"
                       >
-                        Go to Module 3 <ArrowRight className="h-4 w-4" />
+                        <Dices className="h-4 w-4" /> Try another triangle
                       </Button>
-                    )}
+                      {onNavigateModule && (
+                        <Button
+                          variant="outline"
+                          onClick={() => onNavigateModule('m3')}
+                          className="min-h-11 flex-1 gap-1.5 rounded-xl border-emerald-600 text-emerald-800 hover:bg-emerald-50 font-bold"
+                        >
+                          Go to Module 3 <ArrowRight className="h-4 w-4" />
+                        </Button>
+                      )}
+                    </div>
                   </div>
-                </div>
-              </motion.div>
+                </motion.div>
+              </div>
             )}
           </AnimatePresence>
         </div>
