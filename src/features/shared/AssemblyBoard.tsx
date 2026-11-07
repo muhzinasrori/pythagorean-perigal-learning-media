@@ -353,14 +353,9 @@ export function AssemblyBoard({
 
       tweenTo(id, nextState, 380);
 
-      setPlacements((prev) => {
-        const next = { ...prev, [id]: nextState };
-        const count = Object.values(next).filter((p) => p.placed).length;
-        onPlacedChange?.(count, pieces.length);
-        return next;
-      });
+      setPlacements((prev) => ({ ...prev, [id]: nextState }));
     },
-    [pieces, plan.targets, proj, tweenTo, world.a, onPlacedChange, cutCorrect, occupiedSlots, selectedId],
+    [pieces.length, plan.targets, proj, tweenTo, world.a, cutCorrect, occupiedSlots, selectedId],
   );
 
   // Auto-assemble
@@ -376,8 +371,17 @@ export function AssemblyBoard({
     });
   }, [autoSignal]);
 
-  // Completion detection
+  // Completion detection and progress notification
   const placedCount = pieces.filter((p) => placements[p.id]?.placed).length;
+  const lastEmittedRef = useRef<number>(-1);
+
+  useEffect(() => {
+    if (lastEmittedRef.current !== placedCount) {
+      lastEmittedRef.current = placedCount;
+      onPlacedChange?.(placedCount, pieces.length);
+    }
+  }, [placedCount, pieces.length, onPlacedChange]);
+
   useEffect(() => {
     if (placedCount === pieces.length && pieces.length > 0 && !completedRef.current) {
       completedRef.current = true;

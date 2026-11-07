@@ -5,9 +5,22 @@
  * No passwords, accounts, or PII.
  */
 
+import { v4 as uuidv4 } from 'uuid';
+
 const TOKEN_KEY = 'pythagoras-student-token';
 const NAME_KEY = 'pythagoras-student-name';
 const REGISTERED_KEY = 'pythagoras-student-registered';
+
+function generateUUID(): string {
+  if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') {
+    try {
+      return crypto.randomUUID();
+    } catch {
+      // ignore
+    }
+  }
+  return uuidv4();
+}
 
 /**
  * Returns the persistent UUID capability token for this browser.
@@ -20,7 +33,7 @@ export function getStudentToken(): string {
 
   let token = localStorage.getItem(TOKEN_KEY);
   if (!token) {
-    token = crypto.randomUUID();
+    token = generateUUID();
     localStorage.setItem(TOKEN_KEY, token);
   }
   return token;

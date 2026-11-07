@@ -7,6 +7,10 @@ const nextConfig: NextConfig = {
     ignoreBuildErrors: true,
   },
   reactStrictMode: false,
+  devIndicators: {
+    position: 'bottom-left',
+  },
+  allowedDevOrigins: ['10.184.95.47'],
 };
 
 export default nextConfig;
