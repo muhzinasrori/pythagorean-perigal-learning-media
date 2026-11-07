@@ -14,7 +14,7 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Pythagoras Lab — Perigal's Dissection | Grade 8 Interactive Math",
+  title: "Pythagoras LLearnign Media — Perigal's Dissection | Grade 8 Interactive Math",
   description:
     "An interactive English-medium learning tool for Grade 8: discover the Pythagorean Theorem (a² + b² = c²) through Henry Perigal's visual dissection proof. Explore areas, cut and assemble puzzle pieces, take quizzes.",
   keywords: [
