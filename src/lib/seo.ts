@@ -12,10 +12,10 @@ export const SITE_URL = (
   'https://pythagorean-perigal-learning-media.vercel.app'
 ).replace(/\/+$/, '');
 
-export const SITE_NAME = 'Pythagoras Lab';
+export const SITE_NAME = 'Pythagorean Learning Media';
 
 /** Default <title> — kept ≤ 60 characters, primary keyword first. */
-export const SITE_TITLE = "Pythagorean Theorem Lab — Perigal's Dissection";
+export const SITE_TITLE = "Pythagorean Learning Media — Perigal's Dissection";
 
 /** ~155 characters, benefit-led, contains the primary keyword. */
 export const SITE_DESCRIPTION =
