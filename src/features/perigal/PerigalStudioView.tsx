@@ -375,7 +375,7 @@ export function PerigalStudioView({ onNavigateModule }: PerigalStudioViewProps) 
                       {locked
                         ? 'Cutting line locked — it is exactly parallel to the hypotenuse c!'
                         : magnet
-                          ? 'Keep rotating… the lines will lock when they are parallel to c.'
+                          ? 'Keep rotating until the lines are parallel to the hypotenuse... the lines will lock when they are parallel to c.'
                           : 'Free mode: you may cut at any angle — but will the pieces fit?'}
                     </div>
 
