@@ -26,6 +26,9 @@ export function AreaDiagram({ a, b }: AreaDiagramProps) {
       maxY: a + b + 1.2,
     };
     const proj = makeProjector(bounds, W, H, 0.05);
+    const ptC = proj.toSvg(vec(0, 0)); // Right Angle
+    const ptA = proj.toSvg(vec(a, 0)); // leg a
+    const ptB = proj.toSvg(vec(0, b)); // leg b
     const triangle = [vec(0, 0), vec(a, 0), vec(0, b)].map(proj.toSvg);
     const squareA = [vec(0, 0), vec(a, 0), vec(a, -a), vec(0, -a)].map(proj.toSvg);
     const squareB = [vec(0, 0), vec(0, b), vec(-b, b), vec(-b, 0)].map(proj.toSvg);
@@ -46,6 +49,9 @@ export function AreaDiagram({ a, b }: AreaDiagramProps) {
 
     return {
       proj,
+      ptA,
+      ptB,
+      ptC,
       paths: {
         triangle: toPathString(triangle),
         squareA: toPathString(squareA),
@@ -87,6 +93,26 @@ export function AreaDiagram({ a, b }: AreaDiagramProps) {
 
       {/* triangle on top */}
       <path d={view.paths.triangle} fill={PALETTE.triangle.fill} stroke={PALETTE.triangle.stroke} strokeWidth="3.5" />
+
+      <g className="font-mono text-sm font-bold fill-stone-900 select-none">
+        {/* Point A */}
+        <circle cx={view.ptA.x} cy={view.ptA.y} r="5" className="fill-amber-600 stroke-white stroke-2" />
+        <text x={view.ptA.x + 14} y={view.ptA.y + 16} textAnchor="start" dominantBaseline="central">
+          A
+        </text>
+
+        {/* Point B */}
+        <circle cx={view.ptB.x} cy={view.ptB.y} r="5" className="fill-teal-600 stroke-white stroke-2" />
+        <text x={view.ptB.x - 14} y={view.ptB.y - 12} textAnchor="end" dominantBaseline="central">
+          B
+        </text>
+
+        {/* Point C */}
+        <circle cx={view.ptC.x} cy={view.ptC.y} r="5" className="fill-rose-600 stroke-white stroke-2" />
+        <text x={view.ptC.x - 14} y={view.ptC.y + 16} textAnchor="end" dominantBaseline="central">
+          C
+        </text>
+      </g>
 
       {/* right-angle marker (small square tucked into the corner) */}
       <rect

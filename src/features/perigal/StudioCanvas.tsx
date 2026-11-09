@@ -33,6 +33,9 @@ export function StudioCanvas({ world, stage, diag1, diag2, cutAngle, cutExecuted
     const triangle = P(world.triangle);
     const squareC = P(world.squareC);
     const O = proj.toSvg(world.centerB);
+    const ptC = proj.toSvg(vec(0, 0)); // Right Angle
+    const ptA = proj.toSvg(vec(world.a, 0)); // leg a
+    const ptB = proj.toSvg(vec(0, world.b)); // leg b
 
     const diagonal1 = [proj.toSvg(vec(0, 0)), proj.toSvg(vec(-world.b, world.b))];
     const diagonal2 = [proj.toSvg(vec(0, world.b)), proj.toSvg(vec(-world.b, 0))];
@@ -60,6 +63,9 @@ export function StudioCanvas({ world, stage, diag1, diag2, cutAngle, cutExecuted
 
     return {
       proj,
+      ptA,
+      ptB,
+      ptC,
       squareB,
       squareA,
       triangle,
@@ -99,6 +105,26 @@ export function StudioCanvas({ world, stage, diag1, diag2, cutAngle, cutExecuted
 
       {/* triangle */}
       <path d={toPathString(view.triangle)} fill={PALETTE.triangle.fill} stroke={PALETTE.triangle.stroke} strokeWidth="3" />
+
+      <g className="font-mono text-sm font-bold fill-stone-900 select-none">
+        {/* Point A */}
+        <circle cx={view.ptA.x} cy={view.ptA.y} r="5" className="fill-amber-600 stroke-white stroke-2" />
+        <text x={view.ptA.x + 14} y={view.ptA.y + 16} textAnchor="start" dominantBaseline="central">
+          A
+        </text>
+
+        {/* Point B */}
+        <circle cx={view.ptB.x} cy={view.ptB.y} r="5" className="fill-teal-600 stroke-white stroke-2" />
+        <text x={view.ptB.x - 14} y={view.ptB.y - 12} textAnchor="end" dominantBaseline="central">
+          B
+        </text>
+
+        {/* Point C */}
+        <circle cx={view.ptC.x} cy={view.ptC.y} r="5" className="fill-rose-600 stroke-white stroke-2" />
+        <text x={view.ptC.x - 14} y={view.ptC.y + 16} textAnchor="end" dominantBaseline="central">
+          C
+        </text>
+      </g>
 
       {/* c² destination frame — dashed, appears from stage 2 */}
       {stage >= 2 && (
